@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-import argparse, os, json
+import argparse, os, json, glob
+import requests
+import shutil
 
 parser = argparse.ArgumentParser(description='Process a neural style job directory')
 parser.add_argument('directory', type=str,
@@ -12,78 +14,129 @@ parser.add_argument('--test', action='store_true',
                     default=False,
                     help='Do not execute commands')
 parser.add_argument('--size', type=int,
-					default=None,
+                    default=None,
                     help='Override target size of output images in job')
 parser.add_argument('--overwrite', action='store_true',
                     default=False,
                     help='Overwrite existing outputs')
+parser.add_argument('--upload-to',
+                    default=None,
+                    help='URL of the http end-point where the results should be uploaded to')
 
 
 args = parser.parse_args()
 
 
 def run(cmd, force=False):
-	print(cmd)
+    print(cmd)
 
-	if args.test and not force:
-		return 0
+    if args.test and not force:
+        return 0
 
-	return os.system(cmd)
+    return os.system(cmd)
 
+try:
+    directory = args.directory
 
-if not os.path.exists(args.directory):
-	print("Directory does not exist")
-	exit(1)
+    if directory.endswith(".tar.gz"):
+        job_name = os.path.basename(directory).replace('.tar.gz', '')
+        print("Job: " + job_name)
+        print("Downloading: " + directory)
+        run("rm *.tar.gz")
 
-job_file = os.path.join(args.directory, "job.json")
-if not os.path.exists(job_file):
-	print("job.json not in directory")
-	exit(1)
+        r = requests.get(directory, stream=True)
+        if r.status_code == 200:
+            with open(os.path.basename(directory), 'wb') as f:
+                for chunk in r:
+                    f.write(chunk)
 
-with open(job_file, 'r') as f:
-    job = json.loads(f.read())
+        run("tar -xvf {}.tar.gz".format(job_name))
+        run("rm *.tar.gz")
+        directory = job_name
 
-print("Read configuration: ")
-print(json.dumps(job, sort_keys=True, indent=4, separators=(',', ': ')))
+    if not os.path.exists(directory):
+        raise RuntimeError("Directory does not exist")
 
-out_dir = os.path.join(args.directory, "output")
-if os.path.exists(out_dir):
-	if not args.overwrite:
-		print("ERROR: Output directory exists (and no --overwrite): {}".format(out_dir))
-		exit(1)
-	else:
-		print("Output directory exists: {}".format(out_dir))
-else:
-	os.makedirs(out_dir)
-	print("Created directory: {}".format(out_dir))
+    job_file = os.path.join(directory, "job.json")
+    if not os.path.exists(job_file):
+        raise RuntimeError("job.json not in directory")
 
-for artwork in job['artworks']:
-	contents, styles = artwork['contents'], artwork['styles']
-	art_args = artwork['args'] if 'args' in artwork else []
-	
-	if args.size and 'image_size' in art_args:
-		print("Override image_size to {}".format(args.size))
-		art_args['image_size'] = args.size
+    with open(job_file, 'r') as f:
+        job = json.loads(f.read())
 
-	for content in contents:
-		for style in styles:
-			print("Transferring {} style to {} content".format(style, content))
-			out_filename = "{}+{}.png".format(style, content)
+    print("Read configuration: ")
+    print(json.dumps(job, sort_keys=True, indent=4, separators=(',', ': ')))
 
-			out_path = os.path.abspath(os.path.join(out_dir, out_filename))
-			style_path = os.path.abspath(os.path.join(args.directory, "styles", style + ".jpg"))
-			content_path = os.path.abspath(os.path.join(args.directory, "contents", content + ".jpg"))
+    out_dir = os.path.join(directory, "output")
+    if os.path.exists(out_dir):
+        if not args.overwrite:
+            raise RuntimeError("ERROR: Output directory exists (and no --overwrite): {}".format(out_dir))
+        else:
+            print("Output directory exists: {}".format(out_dir))
+    else:
+        os.makedirs(out_dir)
+        print("Created directory: {}".format(out_dir))
 
-			ns_args = ['-{} {}'.format(k, art_args[k]) for k in art_args]
+    for artwork in job['artworks']:
+        contents, styles = artwork['contents'], artwork['styles']
+        art_args = artwork['args'] if 'args' in artwork else []
 
-			if run("lua neural_style.lua -style_image {} -content_image {} -backend cudnn {} -output_image {}".format(
-					style_path, content_path, ' '.join(ns_args), out_path
-				)) != 0:
-				print("ERROR: lua error")
-				exit(1)
+        if isinstance(contents, str):
+            if contents == '*':
+                styles = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(directory, "contents", "*.jpg"))]
+                print("Found wildcard contents: " + str(contents))
+            else:
+                raise RuntimeError("Invalid contents value: " + contents)
 
-			# TODO:
-			# make archive
-			# upload to server
-			# cleanup
-			# shutdown if necessary
+        if isinstance(styles, str):
+            if styles == '*':
+                styles = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(directory, "styles", "*.jpg"))]
+                print("Found wildcard styles: " + str(styles))
+            else:
+                raise RuntimeError("Invalid contents value: " + styles)
+    
+        
+        if args.size and 'image_size' in art_args:
+            print("Override image_size to {}".format(args.size))
+            art_args['image_size'] = args.size
+
+        for content in contents:
+            for style in styles:
+                print("Transferring {} style to {} content".format(style, content))
+                out_filename = "{}+{}+{}.png".format(style, content, '-'.join(['{}_{}'.format(k, art_args[k]) for k in art_args]))
+
+                out_path = os.path.abspath(os.path.join(out_dir, out_filename))
+                style_path = os.path.abspath(os.path.join(directory, "styles", style + ".jpg"))
+                content_path = os.path.abspath(os.path.join(directory, "contents", content + ".jpg"))
+
+                ns_args = ['-{} {}'.format(k, art_args[k]) for k in art_args]
+
+                if run("lua neural_style.lua -style_image {} -content_image {} -backend cudnn {} -output_image {}".format(
+                        style_path, content_path, ' '.join(ns_args), out_path
+                    )) != 0:
+                    raise RuntimeError("ERROR: lua error")
+
+        if args.upload_to:
+            job_name = os.path.basename(directory)
+            print("Archiving...")
+            archive_filename = "{}-output.tar.gz".format(job_name)
+            run("tar -cvzf {} {}".format(archive_filename, out_dir), True)
+
+            print("Uploading to {}".format(args.upload_to))
+
+            files = [('files', (os.path.basename(archive_filename), open(archive_filename, 'rb'), 'application/tar+gzip'))]
+            res = requests.post(args.upload_to, files=files)
+            print(res.content)
+            if res.status_code == 200:
+                # Cleanup
+                run("rm {}".format(archive_filename))
+                run("rm -r {}".format(directory))
+            else:
+                print("ERROR: Could not upload file to server!")
+
+        if args.shutdown:
+            run("shutdown -h now")
+
+except RuntimeError as e:
+    print("ERROR: " + str(e))
+    exit(1)
