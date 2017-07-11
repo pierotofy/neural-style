@@ -79,7 +79,7 @@ try:
 
     for artwork in job['artworks']:
         contents, styles = artwork['contents'], artwork['styles']
-        art_args = artwork['args'] if 'args' in artwork else []
+        art_args = artwork['args'] if 'args' in artwork else {}
 
         if isinstance(contents, str) or isinstance(contents, unicode):
             if contents == '*':
@@ -96,7 +96,7 @@ try:
                 raise RuntimeError("Invalid contents value: " + styles)
     
         
-        if args.size and 'image_size' in art_args:
+        if args.size:
             print("Override image_size to {}".format(args.size))
             art_args['image_size'] = args.size
 
