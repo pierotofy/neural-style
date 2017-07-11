@@ -128,7 +128,7 @@ try:
         files = [('files', (os.path.basename(archive_filename), open(archive_filename, 'rb'), 'application/tar+gzip'))]
         res = requests.post(args.upload_to, files=files)
         print(res.content)
-        if res.status_code == 200:
+        if res.status_code == 200 and "success" in str(res.content):
             # Cleanup
             run("rm {}".format(archive_filename))
             run("rm -r {}".format(directory))
