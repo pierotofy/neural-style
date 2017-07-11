@@ -81,14 +81,14 @@ try:
         contents, styles = artwork['contents'], artwork['styles']
         art_args = artwork['args'] if 'args' in artwork else []
 
-        if isinstance(contents, str):
+        if isinstance(contents, str) or isinstance(contents, unicode):
             if contents == '*':
                 styles = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(directory, "contents", "*.jpg"))]
                 print("Found wildcard contents: " + str(contents))
             else:
                 raise RuntimeError("Invalid contents value: " + contents)
 
-        if isinstance(styles, str):
+        if isinstance(styles, str) or isinstance(styles, unicode):
             if styles == '*':
                 styles = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(directory, "styles", "*.jpg"))]
                 print("Found wildcard styles: " + str(styles))
@@ -111,31 +111,32 @@ try:
 
                 ns_args = ['-{} {}'.format(k, art_args[k]) for k in art_args]
 
-                if run("lua neural_style.lua -style_image {} -content_image {} -backend cudnn {} -output_image {}".format(
+                if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} -backend cudnn {} -output_image {}".format(
                         style_path, content_path, ' '.join(ns_args), out_path
                     )) != 0:
                     raise RuntimeError("ERROR: lua error")
 
-        if args.upload_to:
-            job_name = os.path.basename(directory)
-            print("Archiving...")
-            archive_filename = "{}-output.tar.gz".format(job_name)
-            run("tar -cvzf {} {}".format(archive_filename, out_dir), True)
 
-            print("Uploading to {}".format(args.upload_to))
+    if args.upload_to:
+        job_name = os.path.basename(directory)
+        print("Archiving...")
+        archive_filename = "{}-output.tar.gz".format(job_name)
+        run("tar -cvzf {} {}".format(archive_filename, out_dir), True)
 
-            files = [('files', (os.path.basename(archive_filename), open(archive_filename, 'rb'), 'application/tar+gzip'))]
-            res = requests.post(args.upload_to, files=files)
-            print(res.content)
-            if res.status_code == 200:
-                # Cleanup
-                run("rm {}".format(archive_filename))
-                run("rm -r {}".format(directory))
-            else:
-                print("ERROR: Could not upload file to server!")
+        print("Uploading to {}".format(args.upload_to))
 
-        if args.shutdown:
-            run("shutdown -h now")
+        files = [('files', (os.path.basename(archive_filename), open(archive_filename, 'rb'), 'application/tar+gzip'))]
+        res = requests.post(args.upload_to, files=files)
+        print(res.content)
+        if res.status_code == 200:
+            # Cleanup
+            run("rm {}".format(archive_filename))
+            run("rm -r {}".format(directory))
+        else:
+            print("ERROR: Could not upload file to server!")
+
+    if args.shutdown:
+        run("shutdown -h now")
 
 except RuntimeError as e:
     print("ERROR: " + str(e))
