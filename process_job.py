@@ -83,7 +83,7 @@ try:
 
         if isinstance(contents, str) or isinstance(contents, unicode):
             if contents == '*':
-                styles = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(directory, "contents", "*.jpg"))]
+                contents = [os.path.splitext(os.path.basename(f))[0] for f in glob.glob(os.path.join(directory, "contents", "*.jpg"))]
                 print("Found wildcard contents: " + str(contents))
             else:
                 raise RuntimeError("Invalid contents value: " + contents)
@@ -136,7 +136,7 @@ try:
             print("ERROR: Could not upload file to server!")
 
     if args.shutdown:
-        run("shutdown -h now")
+        run("sudo shutdown -h now")
 
 except RuntimeError as e:
     print("ERROR: " + str(e))
