@@ -103,7 +103,6 @@ try:
             art_args['image_size'] = 512
 
 
-
         for content in contents:
             for style in styles:
                 print("Transferring {} style to {} content".format(style, content))
@@ -115,22 +114,27 @@ try:
 
                 ns_args = ['-{} {}'.format(k, art_args[k]) for k in art_args]
 
-                if art_args['image_size'] > 512:
-                    print("Generating intermediate 512px image")
+                current_resolution = 512
+                while art_args['image_size'] > current_resolution:
+                    print("Generating intermediate {}px image".format(current_resolution))
 
-                    intermediate_out_filename = "{}+{}+{}+intermediate.png".format(style, content, '-'.join(['{}_{}'.format(k, art_args[k]) for k in art_args]))
+                    intermediate_out_filename = "{}+{}+{}+inter-{}.png".format(style, content, '-'.join(['{}_{}'.format(k, art_args[k]) for k in art_args]), current_resolution)
                     intermediate_out_path = os.path.abspath(os.path.join(out_dir, intermediate_out_filename))
 
                     if not os.path.exists(intermediate_out_path):
-                        if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} -backend cudnn -cudnn_autotune {} -output_image {} -image_size 512".format(
-                            style_path, content_path, ' '.join(ns_args), intermediate_out_path
+                        if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} -backend cudnn -cudnn_autotune {} -output_image {} -image_size {}".format(
+                            style_path, content_path, ' '.join(ns_args), intermediate_out_path, current_resolution
                         )) != 0:
                             raise RuntimeError("ERROR: lua error")
                     else:
-                        print("Intermediate image already exists")
+                        print("Intermediate image {}px already exists".format(current_resolution))
 
-                    ns_args.append('-init image')
-                    ns_args.append('-init_image {}'.format(intermediate_out_path))
+                    current_resolution *= 2
+
+                    # Last iteration?
+                    if art_args['image_size'] <= current_resolution:
+                        ns_args.append('-init image')
+                        ns_args.append('-init_image {}'.format(intermediate_out_path))
 
                 if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} -backend cudnn -cudnn_autotune {} -output_image {}".format(
                         style_path, content_path, ' '.join(ns_args), out_path
