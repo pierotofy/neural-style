@@ -7,6 +7,7 @@ me=$(whoami)
 sudo echo "$me ALL=(ALL) NOPASSWD: /sbin/poweroff, /sbin/reboot, /sbin/shutdown" >> /etc/sudoers
 
 # Install neural style and dependencies on a paperspace ML-box
+sudo apt-get install python-pip
 pip install requests
 git clone https://github.com/pierotofy/neural-style
 cd neural-style
