@@ -122,7 +122,7 @@ try:
                     intermediate_out_path = os.path.abspath(os.path.join(out_dir, intermediate_out_filename))
 
                     if not os.path.exists(intermediate_out_path):
-                        if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} -backend cudnn -cudnn_autotune {} -output_image {} -image_size {}".format(
+                        if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} -backend cudnn -optimizer adam {} -output_image {} -image_size {}".format(
                             style_path, content_path, ' '.join(ns_args), intermediate_out_path, current_resolution
                         )) != 0:
                             raise RuntimeError("ERROR: lua error")
