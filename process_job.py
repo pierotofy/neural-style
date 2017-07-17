@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, json, glob
+import argparse, os, json, glob, math
 import requests
 import shutil
 
@@ -135,12 +135,13 @@ try:
                         print("Intermediate image {}px already exists".format(current_resolution))
 
                     current_resolution *= 2
-                    extra_args['num_iterations'] /= 2
+                    extra_args['num_iterations'] = math.floor(extra_args['num_iterations'] / 2)
 
                     extra_args['init'] = 'image'
                     extra_args['init_image'] = intermediate_out_path
 
-                if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} {} {} -output_image {}".format(
+                extra_args['save_iter'] = math.floor(extra_args['num_iterations'] / 2)
+                if run("qlua neural_style.lua -style_image {} -content_image {} {} {} -output_image {}".format(
                         style_path, content_path, ' '.join(['-{} {}'.format(k, extra_args[k]) for k in extra_args]), ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), out_path
                     )) != 0:
                     raise RuntimeError("ERROR: lua error")
