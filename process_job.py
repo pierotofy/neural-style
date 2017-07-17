@@ -113,6 +113,7 @@ try:
                 content_path = os.path.abspath(os.path.join(directory, "contents", content + ".jpg"))
 
                 extra_args = {}
+                extra_args['num_iterations'] = 1000
                 extra_args['backend'] = 'cudnn'
                 extra_args['optimizer'] = 'adam'
                 extra_args['tv_weight'] = 0
@@ -134,6 +135,7 @@ try:
                         print("Intermediate image {}px already exists".format(current_resolution))
 
                     current_resolution *= 2
+                    extra_args['num_iterations'] /= 2
 
                     extra_args['init'] = 'image'
                     extra_args['init_image'] = intermediate_out_path
