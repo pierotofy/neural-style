@@ -140,7 +140,6 @@ try:
                     extra_args['init'] = 'image'
                     extra_args['init_image'] = intermediate_out_path
 
-                extra_args['save_iter'] = math.floor(extra_args['num_iterations'] / 2)
                 if run("qlua neural_style.lua -style_image {} -content_image {} {} {} -output_image {}".format(
                         style_path, content_path, ' '.join(['-{} {}'.format(k, extra_args[k]) for k in extra_args]), ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), out_path
                     )) != 0:
