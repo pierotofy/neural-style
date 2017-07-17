@@ -112,7 +112,7 @@ try:
                 style_path = os.path.abspath(os.path.join(directory, "styles", style + ".jpg"))
                 content_path = os.path.abspath(os.path.join(directory, "contents", content + ".jpg"))
 
-                ns_args = ['-{} {}'.format(k, art_args[k]) for k in art_args]
+                ns_args = 
                 default_params = "-backend cudnn -optimizer adam -tv_weight 0"
 
                 current_resolution = 512
@@ -124,7 +124,7 @@ try:
 
                     if not os.path.exists(intermediate_out_path):
                         if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} {} {} -output_image {} -image_size {}".format(
-                            style_path, content_path, default_params, ' '.join(ns_args), intermediate_out_path, current_resolution
+                            style_path, content_path, default_params, ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), intermediate_out_path, current_resolution
                         )) != 0:
                             raise RuntimeError("ERROR: lua error")
                     else:
@@ -132,13 +132,11 @@ try:
 
                     current_resolution *= 2
 
-                    # Last iteration?
-                    if art_args['image_size'] <= current_resolution:
-                        ns_args.append('-init image')
-                        ns_args.append('-init_image {}'.format(intermediate_out_path))
+                    ns_args['init'] = 'image'
+                    ns_args['init_image'] = intermediate_out_path
 
                 if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} {} {} -output_image {}".format(
-                        style_path, content_path, default_params, ' '.join(ns_args), out_path
+                        style_path, content_path, default_params, ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), out_path
                     )) != 0:
                     raise RuntimeError("ERROR: lua error")
 
