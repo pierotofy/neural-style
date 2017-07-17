@@ -131,8 +131,8 @@ try:
 
                     current_resolution *= 2
 
-                    ns_args['init'] = 'image'
-                    ns_args['init_image'] = intermediate_out_path
+                    art_args['init'] = 'image'
+                    art_args['init_image'] = intermediate_out_path
 
                 if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} {} {} -output_image {}".format(
                         style_path, content_path, default_params, ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), out_path
