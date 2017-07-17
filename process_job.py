@@ -112,9 +112,13 @@ try:
                 style_path = os.path.abspath(os.path.join(directory, "styles", style + ".jpg"))
                 content_path = os.path.abspath(os.path.join(directory, "contents", content + ".jpg"))
 
-                default_params = "-backend cudnn -optimizer adam -tv_weight 0"
+                extra_args = {}
+                extra_args['backend'] = 'cudnn'
+                extra_args['optimizer'] = 'adam'
+                extra_args['tv_weight'] = 0
 
                 current_resolution = 512
+
                 while art_args['image_size'] > current_resolution:
                     print("Generating intermediate {}px image".format(current_resolution))
 
@@ -123,7 +127,7 @@ try:
 
                     if not os.path.exists(intermediate_out_path):
                         if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} {} {} -output_image {} -image_size {}".format(
-                            style_path, content_path, default_params, ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), intermediate_out_path, current_resolution
+                            style_path, content_path, ' '.join(['-{} {}'.format(k, extra_args[k]) for k in extra_args]), ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), intermediate_out_path, current_resolution
                         )) != 0:
                             raise RuntimeError("ERROR: lua error")
                     else:
@@ -131,11 +135,11 @@ try:
 
                     current_resolution *= 2
 
-                    art_args['init'] = 'image'
-                    art_args['init_image'] = intermediate_out_path
+                    extra_args['init'] = 'image'
+                    extra_args['init_image'] = intermediate_out_path
 
                 if run("qlua neural_style.lua -save_iter 0 -style_image {} -content_image {} {} {} -output_image {}".format(
-                        style_path, content_path, default_params, ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), out_path
+                        style_path, content_path, ' '.join(['-{} {}'.format(k, extra_args[k]) for k in extra_args]), ' '.join(['-{} {}'.format(k, art_args[k]) for k in art_args]), out_path
                     )) != 0:
                     raise RuntimeError("ERROR: lua error")
 
