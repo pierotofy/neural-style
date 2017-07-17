@@ -112,7 +112,6 @@ try:
                 style_path = os.path.abspath(os.path.join(directory, "styles", style + ".jpg"))
                 content_path = os.path.abspath(os.path.join(directory, "contents", content + ".jpg"))
 
-                ns_args = 
                 default_params = "-backend cudnn -optimizer adam -tv_weight 0"
 
                 current_resolution = 512
