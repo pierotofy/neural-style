@@ -11,5 +11,6 @@ sudo apt-get install python-pip
 pip install requests
 git clone https://github.com/pierotofy/neural-style
 cd neural-style
+conda uninstall libprotobuf
 luarocks install loadcaffe
 ./models/download_models.sh

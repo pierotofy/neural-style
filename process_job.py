@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import argparse, os, json, glob, math
+import argparse, os, json, glob, math, sys
 import requests
 import shutil
 
@@ -13,6 +13,9 @@ parser.add_argument('--shutdown', action='store_true',
 parser.add_argument('--test', action='store_true',
                     default=False,
                     help='Do not execute commands')
+parser.add_argument('--generate-job', action='store_true',
+                    default=False,
+                    help='Reads images from directory and prints a job.json definition')
 parser.add_argument('--size', type=int,
                     default=None,
                     help='Override target size of output images in job')
@@ -56,6 +59,31 @@ try:
 
     if not os.path.exists(directory):
         raise RuntimeError("Directory does not exist")
+
+    if args.generate_job:
+        # Read all images
+        files = map(os.path.basename, glob.glob("{}/*.png".format(args.directory)))
+        output_json = {"artworks": []}
+
+        for f in files:
+            style, content, opts = f.split("+")
+            opts = filter(lambda opt: not (opt["option"] in ["save_iter", "image_size"]),
+                    map(lambda opt: {"option": "_".join(opt.split("_")[:-1]),
+                                     "value": opt.split("_")[-1] }, 
+                                opts.replace(".png", "").split("-"))
+                        )
+            
+            args = {}
+            for opt in opts:
+                args[opt["option"]] = opt["value"]
+
+            output_json["artworks"].append({
+                    "contents": [content + ".jpg"],
+                    "styles": [style + ".jpg"],
+                    "args": args
+                })
+        print(json.dumps(output_json))
+        sys.exit(0)
 
     job_file = os.path.join(directory, "job.json")
     if not os.path.exists(job_file):
@@ -169,4 +197,6 @@ try:
 
 except RuntimeError as e:
     print("ERROR: " + str(e))
+    if args.shutdown:
+        run("sudo shutdown -h now")
     exit(1)
